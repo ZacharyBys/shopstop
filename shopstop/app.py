@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from flask import Flask, request, session, g, redirect, url_for, abort, \
-     render_template, flash
+     render_template, flash, jsonify
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -18,7 +18,42 @@ app.config.from_envvar('SHOPSTOP_SETTINGS', silent=True)
 def hello_world():
     return 'Welcome to Shop Stop!'
 
+@app.route('/api/products', methods=['PUT', 'GET'])
+def get_all_products():
+    if request.method == 'GET':
+        rv = connect_db()
+        cursor = rv.cursor()
+        cursor.execute('SELECT * FROM PRODUCTS')
+        results = []
+        for row in cursor.fetchall():
+            results.append(row)
+
+        return jsonify(results), 200
+
+    if request.method == 'PUT':
+        payload = request.json
+
+        if 'title' in payload and 'price' in payload:
+            rv = connect_db()
+            cursor = rv.cursor()
+            inventory_count = payload['inventory_count'] if 'inventory_count' in payload else 0
+            query = "INSERT INTO PRODUCTS (title, price, inventory_count) VALUES (?,?,?)"
+
+            cursor.execute(query, (payload['title'], payload['price'], inventory_count))
+            rv.commit()
+            rv.close()
+            return jsonify('Product Added'), 200
+
+
+
 def connect_db():
-    rv = sqlite3.connect(app.config['DATABASE'])
-    rv.row_factory = sqlite3.Row
+    rv = sqlite3.connect(app.config['DATABASE']) 
+    rv.row_factory = create_dictionary
     return rv
+
+def create_dictionary(cursor, row):
+    result = {}
+    for idx, col in enumerate(cursor.description):
+        result[col[0]] = row[idx]
+    return result
+ 
