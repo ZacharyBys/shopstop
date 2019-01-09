@@ -23,11 +23,15 @@ def get_all_products():
     if request.method == 'GET':
         rv = connect_db()
         cursor = rv.cursor()
-        cursor.execute('SELECT * FROM PRODUCTS')
+        if request.args.get('available') == 'True':
+            cursor.execute('SELECT * FROM PRODUCTS WHERE inventory_count <> 0')
+        else:
+            cursor.execute('SELECT * FROM PRODUCTS')
+
         results = []
         for row in cursor.fetchall():
             results.append(row)
-
+            
         return jsonify(results), 200
 
     if request.method == 'PUT':
@@ -43,6 +47,15 @@ def get_all_products():
             rv.commit()
             rv.close()
             return jsonify('Product Added'), 200
+
+@app.route('/api/products/<string:id>', methods=['GET'])
+def get_one_product(id):
+    rv = connect_db()
+    cursor = rv.cursor()
+    query = 'SELECT * FROM PRODUCTS WHERE id=?'
+
+    cursor.execute(query, id)
+    return jsonify(cursor.fetchone()), 200
 
 
 
