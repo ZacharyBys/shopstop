@@ -57,6 +57,25 @@ def get_one_product(id):
     cursor.execute(query, id)
     return jsonify(cursor.fetchone()), 200
 
+@app.route('/api/purchase/<string:id>', methods=['POST'])
+def purchase_one_product(id):
+    rv = connect_db()
+    cursor = rv.cursor()
+    query = 'SELECT inventory_count FROM PRODUCTS WHERE id=?'
+
+    cursor.execute(query, id)
+    inventory_count = cursor.fetchone()['inventory_count']
+
+    if inventory_count < 1:
+        return jsonify('No quantity available to purchase'), 400
+    else:
+        query = "UPDATE products SET inventory_count = inventory_count - 1 WHERE id=?"
+        cursor.execute(query, id)
+        rv.commit()
+        rv.close()
+        return jsonify('Product Purchased'), 200
+
+
 
 
 def connect_db():
