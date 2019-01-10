@@ -19,7 +19,7 @@ def hello_world():
     return 'Welcome to Shop Stop!'
 
 @app.route('/api/products', methods=['PUT', 'GET'])
-def get_all_products():
+def products():
     if request.method == 'GET':
         rv = connect_db()
         cursor = rv.cursor()
@@ -74,6 +74,41 @@ def purchase_one_product(id):
         rv.commit()
         rv.close()
         return jsonify('Product Purchased'), 200
+
+
+@app.route('/api/carts', methods=['POST', 'GET'])
+def carts():
+    if request.method == 'POST':
+        rv = connect_db()
+        cursor = rv.cursor()
+        cursor.execute("INSERT INTO CARTS (total_cost) VALUES (0)")
+        rv.commit()
+        cursor.execute("SELECT * FROM CARTS WHERE id=last_insert_rowid()")
+        return jsonify(cursor.fetchone()), 200
+    if request.method == 'GET':
+        rv = connect_db()
+        cursor = rv.cursor()
+        cursor.execute("SELECT * FROM CARTS")
+        return jsonify(cursor.fetchall()), 200
+
+@app.route('/api/carts/<string:cart_id>/<string:product_id>', methods=['PUT'])
+def add_to_cart(cart_id, product_id):
+    rv = connect_db()
+    cursor = rv.cursor()
+
+    query = "INSERT INTO PRODUCTSCARTS (cart_id, product_id) VALUES (?,?)"
+    cursor.execute(query, (cart_id, product_id))
+
+    query = "SELECT price FROM PRODUCTS WHERE id=?"
+    cursor.execute(query, product_id)
+    price = cursor.fetchone()['price']
+
+    query = "UPDATE carts SET total_cost = total_cost +? WHERE id=?"
+    cursor.execute(query, (price, cart_id))
+    rv.commit()
+    rv.close()
+
+    return jsonify("Product Added"), 200
 
 
 
