@@ -91,27 +91,40 @@ def carts():
         cursor.execute("SELECT * FROM CARTS")
         return jsonify(cursor.fetchall()), 200
 
-@app.route('/api/carts/<string:cart_id>/<string:product_id>', methods=['PUT'])
+@app.route('/api/carts/<string:cart_id>/<string:product_id>', methods=['PUT', 'DELETE'])
 def add_to_cart(cart_id, product_id):
     rv = connect_db()
     cursor = rv.cursor()
 
-    query = "INSERT INTO PRODUCTSCARTS (cart_id, product_id) VALUES (?,?)"
-    cursor.execute(query, (cart_id, product_id))
+    if request.method == 'PUT':
+        query = "INSERT INTO PRODUCTSCARTS (cart_id, product_id) VALUES (?,?)"
+        cursor.execute(query, (cart_id, product_id))
 
-    query = "SELECT price FROM PRODUCTS WHERE id=?"
-    cursor.execute(query, product_id)
-    price = cursor.fetchone()['price']
+        query = "SELECT price FROM PRODUCTS WHERE id=?"
+        cursor.execute(query, product_id)
+        price = cursor.fetchone()['price']
 
-    query = "UPDATE carts SET total_cost = total_cost +? WHERE id=?"
-    cursor.execute(query, (price, cart_id))
-    rv.commit()
-    rv.close()
+        query = "UPDATE carts SET total_cost = total_cost +? WHERE id=?"
+        cursor.execute(query, (price, cart_id))
+        rv.commit()
+        rv.close()
 
-    return jsonify("Product Added"), 200
+        return jsonify("Product Added"), 200
 
+    if request.method == 'DELETE':
+        query = "DELETE FROM PRODUCTSCARTS WHERE rowid= (SELECT rowid FROM PRODUCTsCARTS WHERE cart_id=? AND product_id=? LIMIT 1)"
+        cursor.execute(query, (cart_id, product_id))
 
+        query = "SELECT price FROM PRODUCTS WHERE id=?"
+        cursor.execute(query, product_id)
+        price = cursor.fetchone()['price']
 
+        query = "UPDATE carts SET total_cost = total_cost -? WHERE id=?"
+        cursor.execute(query, (price, cart_id))
+        rv.commit()
+        rv.close()
+
+        return jsonify("Product Deleted"), 200
 
 def connect_db():
     rv = sqlite3.connect(app.config['DATABASE']) 
