@@ -48,6 +48,17 @@ def products():
             rv.close()
             return jsonify('Product Added'), 200
 
+@app.route('/api/products/<string:id>', methods=['POST'])
+def add_inventory(id):
+    rv = connect_db()
+    cursor = rv.cursor()
+    query = "UPDATE products SET inventory_count = inventory_count + 1 WHERE id=?"
+
+    cursor.execute(query, (id))
+    rv.commit()
+    rv.close()
+    return jsonify("Inventory Added"), 200
+
 @app.route('/api/products/<string:id>', methods=['GET'])
 def get_one_product(id):
     rv = connect_db()
@@ -85,6 +96,8 @@ def carts():
         rv.commit()
         cursor.execute("SELECT * FROM CARTS WHERE id=last_insert_rowid()")
         return jsonify(cursor.fetchone()), 200
+
+    #ADD PRODUCTS TO THE GET FOR CARTS (SEEING INVIDIVUAL PRODUCTS)
     if request.method == 'GET':
         rv = connect_db()
         cursor = rv.cursor()
@@ -112,7 +125,7 @@ def add_to_cart(cart_id, product_id):
         return jsonify("Product Added"), 200
 
     if request.method == 'DELETE':
-        query = "DELETE FROM PRODUCTSCARTS WHERE rowid= (SELECT rowid FROM PRODUCTsCARTS WHERE cart_id=? AND product_id=? LIMIT 1)"
+        query = "DELETE FROM PRODUCTSCARTS WHERE rowid= (SELECT rowid FROM PRODUCTSCARTS WHERE cart_id=? AND product_id=? LIMIT 1)"
         cursor.execute(query, (cart_id, product_id))
 
         query = "SELECT price FROM PRODUCTS WHERE id=?"
@@ -125,6 +138,36 @@ def add_to_cart(cart_id, product_id):
         rv.close()
 
         return jsonify("Product Deleted"), 200
+
+
+@app.route('/api/carts/checkout/<string:cart_id>', methods=['POST'])
+def checkout_cart(cart_id):
+    rv = connect_db()
+    cursor = rv.cursor()
+
+    cursor.execute("SELECT product_id FROM PRODUCTSCARTS WHERE cart_id=?", (cart_id))
+    products = cursor.fetchall()
+    productsToBuy = {}
+    for product in products:
+        if product['product_id'] in productsToBuy:
+            productsToBuy[product['product_id']] += 1
+        else:
+            productsToBuy[product['product_id']] = 1
+
+    for product_id, quantity in productsToBuy.items():
+        cursor.execute("SELECT inventory_count FROM PRODUCTS WHERE id=?", (product_id,))
+        available_quantity = cursor.fetchone()['inventory_count']
+        if quantity <= available_quantity:
+            cursor.execute("UPDATE products SET inventory_count = inventory_count - ? WHERE id=?", (quantity, product_id))
+        else:
+            return jsonify('Not enough inventory, cannot checkout cart'), 400
+
+    cursor.execute("DELETE FROM PRODUCTSCARTS WHERE cart_id=?", (cart_id))
+    cursor.execute("DELETE FROM CARTS WHERE id=?", (cart_id))
+    rv.commit()
+    rv.close()
+
+    return jsonify('Cart Checked Out'), 200
 
 def connect_db():
     rv = sqlite3.connect(app.config['DATABASE']) 
