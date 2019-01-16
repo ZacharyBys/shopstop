@@ -41,14 +41,14 @@ def products():
         if 'title' in payload and 'price' in payload:
             inventory_count = payload['inventory_count'] if 'inventory_count' in payload else 0
             query = "INSERT INTO PRODUCTS (title, price, inventory_count) VALUES (?,?,?)"
-            db.no_return_query(query, (payload['title'], payload['price'], inventory_count))
+            db.no_return_query(query, (payload['title'], payload['price'], inventory_count), True)
             
             return jsonify('Product Added'), 200
 
 @app.route('/api/products/<string:id>', methods=['POST'])
 def add_inventory(id):
     query = "UPDATE products SET inventory_count = inventory_count + 1 WHERE id=?"
-    db.no_return_query(query, (id))
+    db.no_return_query(query, (id), True)
     return jsonify("Inventory Added"), 200
 
 @app.route('/api/products/<string:id>', methods=['GET'])
@@ -65,20 +65,17 @@ def purchase_one_product(id):
         return jsonify('No quantity available to purchase'), 400
     else:
         query = "UPDATE products SET inventory_count = inventory_count - 1 WHERE id=?"
-        db.no_return_query(query, id)
+        db.no_return_query(query, id, True)
         return jsonify('Product Purchased'), 200
 
 
 @app.route('/api/carts', methods=['POST', 'GET'])
 def carts():
+    #TEST THIS IMPORTANTE
     if request.method == 'POST':
-        rv = connect_db()
-        cursor = rv.cursor()
-        cursor.execute("INSERT INTO CARTS (total_cost) VALUES (0)")
-        db.no_return_query("INSERT INTO CARTS (total_cost) VALUES (0)", ())
-        rv.commit()
-        cursor.execute("SELECT * FROM CARTS WHERE id=last_insert_rowid()")
-        return jsonify(cursor.fetchone()), 200
+        rv = db.no_return_query("INSERT INTO CARTS (total_cost) VALUES (0)", (), False)
+        cart = rv.cursor().execute("SELECT * FROM CARTS WHERE id=last_insert_rowid()").fetchone()
+        return jsonify(cart), 200
 
     #ADD PRODUCTS TO THE GET FOR CARTS (SEEING INVIDIVUAL PRODUCTS)
     if request.method == 'GET':
@@ -87,48 +84,35 @@ def carts():
 
 @app.route('/api/carts/<string:cart_id>/<string:product_id>', methods=['PUT', 'DELETE'])
 def add_to_cart(cart_id, product_id):
-    rv = connect_db()
-    cursor = rv.cursor()
-
     if request.method == 'PUT':
-        queries = []
-        queries.append("INSERT INTO PRODUCTSCARTS (cart_id, product_id) VALUES (?,?)")
-        cursor.execute(query, (cart_id, product_id))
+        query = "INSERT INTO PRODUCTSCARTS (cart_id, product_id) VALUES (?,?)"
+        db.no_return_query(query, (cart_id, product_id), True)
 
         query = "SELECT price FROM PRODUCTS WHERE id=?"
-        cursor.execute(query, product_id)
-        price = cursor.fetchone()['price']
+        price = db.single_return_query(query, product_id)['price']
 
         query = "UPDATE carts SET total_cost = total_cost +? WHERE id=?"
-        cursor.execute(query, (price, cart_id))
-        rv.commit()
-        rv.close()
+        db.no_return_query(query, (price, cart_id), True)
 
         return jsonify("Product Added"), 200
 
     if request.method == 'DELETE':
         query = "DELETE FROM PRODUCTSCARTS WHERE rowid= (SELECT rowid FROM PRODUCTSCARTS WHERE cart_id=? AND product_id=? LIMIT 1)"
-        cursor.execute(query, (cart_id, product_id))
+        db.no_return_query(query, (cart_id, product_id), True)
 
         query = "SELECT price FROM PRODUCTS WHERE id=?"
-        cursor.execute(query, product_id)
-        price = cursor.fetchone()['price']
+        price = db.single_return_query(query, product_id)['price']
 
         query = "UPDATE carts SET total_cost = total_cost -? WHERE id=?"
-        cursor.execute(query, (price, cart_id))
-        rv.commit()
-        rv.close()
+        db.no_return_query(query, (price, cart_id), True)
 
         return jsonify("Product Deleted"), 200
 
 
 @app.route('/api/carts/checkout/<string:cart_id>', methods=['POST'])
 def checkout_cart(cart_id):
-    rv = connect_db()
-    cursor = rv.cursor()
-
-    cursor.execute("SELECT product_id FROM PRODUCTSCARTS WHERE cart_id=?", (cart_id))
-    products = cursor.fetchall()
+    query = "SELECT product_id FROM PRODUCTSCARTS WHERE cart_id=?"
+    products = db.multiple_return_query(query, (cart_id))
     productsToBuy = {}
     for product in products:
         if product['product_id'] in productsToBuy:
@@ -136,29 +120,20 @@ def checkout_cart(cart_id):
         else:
             productsToBuy[product['product_id']] = 1
 
+    workingProducts = []
     for product_id, quantity in productsToBuy.items():
-        cursor.execute("SELECT inventory_count FROM PRODUCTS WHERE id=?", (product_id,))
-        available_quantity = cursor.fetchone()['inventory_count']
+        query = "SELECT inventory_count FROM PRODUCTS WHERE id=?"
+        available_quantity = db.single_return_query(query, (product_id,))['inventory_count']
         if quantity <= available_quantity:
-            cursor.execute("UPDATE products SET inventory_count = inventory_count - ? WHERE id=?", (quantity, product_id))
+            workingProducts.append(("UPDATE products SET inventory_count = inventory_count - ? WHERE id=?", (quantity, product_id)))
         else:
             return jsonify('Not enough inventory, cannot checkout cart'), 400
 
-    cursor.execute("DELETE FROM PRODUCTSCARTS WHERE cart_id=?", (cart_id))
-    cursor.execute("DELETE FROM CARTS WHERE id=?", (cart_id))
-    rv.commit()
-    rv.close()
+    for product in workingProducts:
+        db.no_return_query(product[0], product[1], True)
+
+    db.no_return_query("DELETE FROM PRODUCTSCARTS WHERE cart_id=?", (cart_id), True)
+    db.no_return_query("DELETE FROM CARTS WHERE id=?", (cart_id), True)
 
     return jsonify('Cart Checked Out'), 200
-
-def connect_db():
-    rv = sqlite3.connect(app.config['DATABASE']) 
-    rv.row_factory = create_dictionary
-    return rv
-
-def create_dictionary(cursor, row):
-    result = {}
-    for idx, col in enumerate(cursor.description):
-        result[col[0]] = row[idx]
-    return result
  

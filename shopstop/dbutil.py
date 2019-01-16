@@ -26,12 +26,16 @@ class DBUtil:
         rv.close()
         return value
 
-    def no_return_query(self, query, params):
+    def no_return_query(self, query, params, commit):
         rv = self.connect_db()
         cursor = rv.cursor()
         cursor.execute(query, params)
-        rv.commit()
-        rv.close()
+
+        if commit:
+            rv.commit()
+            rv.close()
+        else:
+            return rv
 
     def multiple_no_return_query(self, queries, params):
         rv = self.connect_db()
