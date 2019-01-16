@@ -71,7 +71,6 @@ def purchase_one_product(id):
 
 @app.route('/api/carts', methods=['POST', 'GET'])
 def carts():
-    #TEST THIS IMPORTANTE
     if request.method == 'POST':
         rv = db.no_return_query("INSERT INTO CARTS (total_cost) VALUES (0)", (), False)
         cart = rv.cursor().execute("SELECT * FROM CARTS WHERE id=last_insert_rowid()").fetchone()
@@ -82,6 +81,17 @@ def carts():
     if request.method == 'GET':
         carts = db.multiple_return_query("SELECT * FROM CARTS", ())
         return jsonify(carts), 200
+
+@app.route('/api/carts/<string:cart_id>', methods=['GET'])
+def get_single_cart(cart_id):
+    cart = db.single_return_query("SELECT * FROM CARTS WHERE id=?", (cart_id))
+
+    query = "SELECT product_id, title, price, inventory_count FROM PRODUCTSCARTS JOIN Products ON productscarts.product_id=products.id WHERE productscarts.cart_id=?"
+    products = db.multiple_return_query(query, (cart_id))
+    cart['products'] = products
+
+    return jsonify(cart), 200           
+
 
 @app.route('/api/carts/<string:cart_id>/<string:product_id>', methods=['PUT', 'DELETE'])
 def add_to_cart(cart_id, product_id):
