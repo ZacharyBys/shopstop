@@ -4,7 +4,7 @@ from utils.dbutil import DBUtil
 from flask import Flask, request, session, g, redirect, url_for, abort, \
      render_template, flash, jsonify
 
-app = Flask(__name__)
+app = Flask('shopstop')
 app.config.from_object(__name__)
 
 app.config.update(dict(
