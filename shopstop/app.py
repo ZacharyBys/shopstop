@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from dbutil import DBUtil
+from utils.dbutil import DBUtil
 from flask import Flask, request, session, g, redirect, url_for, abort, \
      render_template, flash, jsonify
 
@@ -75,6 +75,7 @@ def carts():
     if request.method == 'POST':
         rv = db.no_return_query("INSERT INTO CARTS (total_cost) VALUES (0)", (), False)
         cart = rv.cursor().execute("SELECT * FROM CARTS WHERE id=last_insert_rowid()").fetchone()
+        rv.commit()
         return jsonify(cart), 200
 
     #ADD PRODUCTS TO THE GET FOR CARTS (SEEING INVIDIVUAL PRODUCTS)
