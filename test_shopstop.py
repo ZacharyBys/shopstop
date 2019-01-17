@@ -30,6 +30,7 @@ class BasicTests(unittest.TestCase):
         newProduct = {}
         newProduct['title'] = 'testItem'
         newProduct['price'] = 100
+        newProduct['inventory_count'] = 3
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
@@ -42,9 +43,47 @@ class BasicTests(unittest.TestCase):
         putItem = response.json[0]
         self.assertEqual(putItem['title'], newProduct['title'])
         self.assertEqual(putItem['price'], newProduct['price'])
-        self.assertEqual(putItem['inventory_count'], 0)
+        self.assertEqual(putItem['inventory_count'], 3)
         self.assertEqual(putItem['id'], 1)
- 
- 
+
+    def test_add_inventory_and_get_product(self):
+        newProduct = {}
+        newProduct['title'] = 'testItem'
+        newProduct['price'] = 100
+        newProduct['inventory_count'] = 3
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+
+        response = self.app.put('/api/products', data=json.dumps(newProduct), headers=headers)
+
+        self.app.post('/api/products/1')
+
+        response = self.app.get('/api/products/1')
+        self.assertEqual(response.json['inventory_count'], 4)
+        self.assertEqual(response.json['title'], 'testItem')
+        self.assertEqual(response.json['price'], 100)
+
+    def test_purchase_product(self):
+        newProduct = {}
+        newProduct['title'] = 'testItem'
+        newProduct['price'] = 100
+        newProduct['inventory_count'] = 1
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+
+        self.app.put('/api/products', data=json.dumps(newProduct), headers=headers)
+
+        response = self.app.get('/api/products/1')
+        self.assertEqual(response.json['inventory_count'], 1)
+        self.app.post('/api/purchase/1')
+        response = self.app.get('/api/products/1')
+        self.assertEqual(response.json['inventory_count'], 0)
+        response = self.app.post('/api/purchase/1')
+        self.assertEqual(response.status_code, 400)        
+
 if __name__ == "__main__":
     unittest.main()

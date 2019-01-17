@@ -1,4 +1,5 @@
 import sqlite3
+import os
 
 class DBUtil:
 
@@ -17,6 +18,7 @@ class DBUtil:
         return rv
 
     def init_test_db(self):
+        os.remove('testdb.db')
         rv = sqlite3.connect('testdb.db')
         rv.row_factory = create_dictionary
         with self.app.open_resource('shopstop.sql', mode='r') as f:
