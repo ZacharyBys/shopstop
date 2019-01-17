@@ -1,3 +1,2 @@
 Flask==1.0.2
 pytest==4.1.1
-pysqlite==3.0
