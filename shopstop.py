@@ -78,7 +78,6 @@ def carts():
         rv.commit()
         return jsonify(cart), 200
 
-    #ADD PRODUCTS TO THE GET FOR CARTS (SEEING INVIDIVUAL PRODUCTS)
     if request.method == 'GET':
         carts = db.multiple_return_query("SELECT * FROM CARTS", ())
         return jsonify(carts), 200
