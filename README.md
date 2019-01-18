@@ -12,7 +12,7 @@ The application requires **Python 3.+** to run.
 
 First install the dependencies. From root, run: 
 ```
-pip install -r requirements
+pip install -r requirements.txt
 ```
 
 Export the correct environment variable: 
