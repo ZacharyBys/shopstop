@@ -2,6 +2,8 @@
 
 This was built using Flask for the Summer 2019 Developer Intern Challenge for Shopify.
 
+Repo found at: https://github.com/ZacharyBys/shopstop
+
 Shopstop allows for simple operations for an online marketplace. It supports adding products, inventory, purchasing, creating carts, adding and removing from carts, and checking out carts.
 
 ## Running the app
