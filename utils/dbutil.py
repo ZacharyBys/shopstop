@@ -19,7 +19,9 @@ class DBUtil:
         return rv
 
     def init_db(self):
-        os.remove(self.app.config['DATABASE'])
+        if os.path.isfile(self.app.config['DATABASE']):
+            os.remove(self.app.config['DATABASE'])
+
         rv = sqlite3.connect(self.app.config['DATABASE'])
         rv.row_factory = create_dictionary
         with self.app.open_resource('shopstop.sql', mode='r') as f:
@@ -28,7 +30,9 @@ class DBUtil:
         return rv
 
     def init_test_db(self):
-        os.remove('testdb.db')
+        if os.path.isfile('./testdb.db'):
+            os.remove('testdb.db')
+
         rv = sqlite3.connect('testdb.db')
         rv.row_factory = create_dictionary
         with self.app.open_resource('shopstop.sql', mode='r') as f:
