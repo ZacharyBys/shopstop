@@ -24,6 +24,9 @@ def hello_world():
 
 @app.route('/api/products', methods=['PUT', 'GET'])
 def products():
+    """
+    Returns all products.
+    """
     if request.method == 'GET':
         if request.args.get('available') == 'True':
             query = 'SELECT * FROM PRODUCTS WHERE inventory_count <> 0'
@@ -36,6 +39,10 @@ def products():
             
         return jsonify(results), 200
 
+    """
+    Adds a new product.
+    body params: title, price, and optional inventory_count.
+    """    
     if request.method == 'PUT':
         payload = request.json
 
@@ -48,17 +55,32 @@ def products():
 
 @app.route('/api/products/<string:id>', methods=['POST'])
 def add_inventory(id):
+    """
+    Adds 1 to the inventory of product.
+
+    :param id: id of the product
+    """  
     query = "UPDATE products SET inventory_count = inventory_count + 1 WHERE id=?"
     db.no_return_query(query, (id), True)
     return jsonify("Inventory Added"), 200
 
 @app.route('/api/products/<string:id>', methods=['GET'])
 def get_one_product(id):
+    """
+    Get a single product.
+
+    :param id: id of the product
+    """  
     product = db.single_return_query('SELECT * FROM PRODUCTS WHERE id=?', id)
     return jsonify(product), 200
 
 @app.route('/api/purchase/<string:id>', methods=['POST'])
 def purchase_one_product(id):
+    """
+    Purchase a single product.
+
+    :param id: id of the product
+    """  
     query = 'SELECT inventory_count FROM PRODUCTS WHERE id=?'
     inventory_count = db.single_return_query(query, id)['inventory_count']
 
@@ -72,6 +94,9 @@ def purchase_one_product(id):
 
 @app.route('/api/carts', methods=['POST', 'GET'])
 def carts():
+    """
+    Create a new cart.
+    """  
     if request.method == 'POST':
         rv = db.no_return_query("INSERT INTO CARTS (total_cost) VALUES (0)", (), False)
         cart = rv.cursor().execute("SELECT * FROM CARTS WHERE id=last_insert_rowid()").fetchone()
@@ -84,6 +109,11 @@ def carts():
 
 @app.route('/api/carts/<string:cart_id>', methods=['GET'])
 def get_single_cart(cart_id):
+    """
+    Get a single cart
+
+    :param cart_id: id of the cart
+    """  
     cart = db.single_return_query("SELECT * FROM CARTS WHERE id=?", (cart_id))
 
     query = "SELECT product_id, title, price, inventory_count FROM PRODUCTSCARTS JOIN Products ON productscarts.product_id=products.id WHERE productscarts.cart_id=?"
@@ -95,6 +125,12 @@ def get_single_cart(cart_id):
 
 @app.route('/api/carts/<string:cart_id>/<string:product_id>', methods=['PUT', 'DELETE'])
 def add_to_cart(cart_id, product_id):
+    """
+    Add or delete a product from a cart.
+
+    :param cart_id: id of the cart
+    :param product_id: id of the product
+    """  
     if request.method == 'PUT':
         query = "INSERT INTO PRODUCTSCARTS (cart_id, product_id) VALUES (?,?)"
         db.no_return_query(query, (cart_id, product_id), True)
@@ -122,6 +158,11 @@ def add_to_cart(cart_id, product_id):
 
 @app.route('/api/carts/checkout/<string:cart_id>', methods=['POST'])
 def checkout_cart(cart_id):
+    """
+    Checkout a cart.
+
+    :param cart_id: id of the cart
+    """  
     query = "SELECT product_id FROM PRODUCTSCARTS WHERE cart_id=?"
     products = db.multiple_return_query(query, (cart_id))
     productsToBuy = {}
