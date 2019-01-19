@@ -10,11 +10,21 @@ class DBUtil:
             self.init_test_db()
             self.connect_db = self.connect_test_db
         else:
+            self.init_db()
             self.connect_db = self.connect_real_db
-        
+ 
     def connect_real_db(self):
         rv = sqlite3.connect(self.app.config['DATABASE']) 
         rv.row_factory = create_dictionary
+        return rv
+
+    def init_db(self):
+        os.remove(self.app.config['DATABASE'])
+        rv = sqlite3.connect(self.app.config['DATABASE'])
+        rv.row_factory = create_dictionary
+        with self.app.open_resource('shopstop.sql', mode='r') as f:
+            rv.cursor().executescript(f.read())
+        rv.commit()
         return rv
 
     def init_test_db(self):
